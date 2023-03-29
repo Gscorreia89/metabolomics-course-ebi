@@ -1,0 +1,89 @@
+---
+title: "Univariate analysis"
+output: html_notebook
+---
+
+
+```{r}
+library(readr)
+library(ggplot2)
+library(doParallel)
+library(scales)
+
+registerDoParallel(cores=1)
+```
+
+
+```{r}
+lcMSDataset <- readr::read_csv('./Data/Dementia_RPOS_XCMS.csv')
+
+firstMetaboliteColIdx <- 12
+```
+# Linear model analysis
+```{r}
+#define a function to apply to each metabolite and extract effect size estimates and p-values
+fitLMModel <- function(dataset, var) {
+  featureName <- colnames(dataset)[var]
+  lmModel <- lm(log(get(featureName) + 1) ~ Age + Gender, data=dataset)
+  lmModelSummary <- summary(lmModel)
+  fStat <- lmModelSummary$fstatistic
+  r2AOVpval <- pf(fStat[1],fStat[2],fStat[3],lower.tail=F)
+  
+  linearModelResults <- c(Feature=featureName, r2=lmModelSummary$r.squared, Age=lmModelSummary$coefficients['Age', 't value'],
+                                Gender=lmModelSummary$coefficients['GenderMale', 't value'],
+                                r2_pval=r2AOVpval, 
+                                age_pval=lmModelSummary$coefficients['Age', 'Pr(>|t|)'],
+                                Gender_pval=lmModelSummary$coefficients['GenderMale', 'Pr(>|t|)']) 
+  
+return(linearModelResults)
+  
+}
+```
+### Apply the linear model analysis function to each MS feature (columns)
+```{r}
+linearModelAnalysis <- foreach(var=firstMetaboliteColIdx:ncol(lcMSDataset), .combine=rbind) %dopar% {
+    tryCatch({
+        return(fitLMModel(lcMSDataset, var))
+    }, error = function(err) {
+       # In case of crash fill a row of NA's
+       currmet_parsed <- substring(colnames(lcMSDataset)[var], first=2)
+       return(c(currmet_parsed, rep(NA,6)))
+    })
+}
+
+linearModelAnalysis <- data.frame(linearModelAnalysis)
+linearModelAnalysis[, 2:ncol(linearModelAnalysis)] <- apply(linearModelAnalysis[, 2:ncol(linearModelAnalysis)], 2, as.numeric)
+```
+
+# Plot p-value and t-ratio distributions for Age
+```{r}
+ggplot(linearModelAnalysis, aes(x=age_pval)) + geom_histogram(fill='steelblue3', col='black', bins=100, alpha=0.6) + xlab('Age p-value') + theme_light()
+ggplot(linearModelAnalysis, aes(x=Age)) + geom_histogram(fill='steelblue3', col='black', bins=100, alpha=0.6) + xlab('Age t-ratio') + theme_light()
+```
+# Plot p-value and t-ratio distributions for Gender
+```{r}
+ggplot(linearModelAnalysis, aes(x=Gender_pval)) + geom_histogram(fill='steelblue3', col='black', bins=100, alpha=0.6) + xlab('Gender p-value') + theme_light()
+ggplot(linearModelAnalysis, aes(x=Gender)) + geom_histogram(fill='steelblue3', col='black', bins=100, alpha=0.6) + xlab('Gender t-ratio') +theme_light()
+```
+
+# Multiple testing correction
+```{r}
+bonferroniAge <- p.adjust(linearModelAnalysis$age_pval, method='bonferroni')
+BHAge <- p.adjust(linearModelAnalysis$age_pval, method='BH')
+BYAge <- p.adjust(linearModelAnalysis$age_pval, method='BY')
+
+bonferroniGender <- p.adjust(linearModelAnalysis$Gender_pval, method='bonferroni')
+BHGender <- p.adjust(linearModelAnalysis$Gender_pval, method='BH')
+BYGender <- p.adjust(linearModelAnalysis$Gender_pval, method='BY')
+```
+
+# Plot some of the significant features
+```{r}
+# Significant feature for Gender
+feature <- linearModelAnalysis[which.min(BHGender), 'Feature']
+ggplot(lcMSDataset, aes(x=Gender, y=get(feature))) + geom_boxplot(aes(fill=Gender), alpha=0.4, outlier.shape=NA) + geom_jitter(aes(col=Gender)) + xlab('Gender') + ylab(paste0('log(', feature, ' + 1)')) +  theme_light() + scale_y_continuous(trans = log1p_trans(), breaks = trans_breaks("log", function(x) exp(x)), labels = trans_format("log", math_format(e^.x)))
+
+# Significant feature for Age
+feature <- linearModelAnalysis[which.min(BHAge), 'Feature']
+ggplot(lcMSDataset, aes(x=Age, y=get(feature))) + geom_point(col='steelblue2') + xlab('Age') + ylab(paste0('log(', feature, ' + 1)')) +  theme_light() + scale_y_continuous(trans = log1p_trans(), breaks = trans_breaks("log", function(x) exp(x)), labels = trans_format("log", math_format(e^.x)))
+```
