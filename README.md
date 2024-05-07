@@ -2,12 +2,14 @@
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Gscorreia89/metabolomics-course-ebi/HEAD)
 
+Metabolomics data analysis tutorials for the EMBL-EBI "Introduction to metabolomics analysis" short course.
 
-[PCA Analysis](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA.ipynb)
+Run the tutorials via google Collab:
+ - [PCA Analysis](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA.ipynb)
 
-[PLS Regression](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PLS.ipynb)
+ - [PLS Regression](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PLS.ipynb)
 
-[PLS-DA](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PLS-DA.ipynb)
+ - [PLS-DA](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PLS-DA.ipynb)
 
-[Univariate Analysis](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/UnivariateAnalysis.ipynb)
+ - [Univariate Analysis](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/UnivariateAnalysis.ipynb)
 
