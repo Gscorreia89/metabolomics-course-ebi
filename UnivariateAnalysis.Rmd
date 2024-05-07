@@ -10,12 +10,12 @@ library(ggplot2)
 library(doParallel)
 library(scales)
 
-registerDoParallel(cores=1)
+registerDoParallel(cores=6)
 ```
 
-
+Load the dataset
 ```{r}
-lcMSDataset <- readr::read_csv('./Data/Dementia_RPOS_XCMS.csv')
+lcMSDataset <- readr::read_csv('./Data/Dementia_RPOS_XCMS_Dataset.csv')
 
 firstMetaboliteColIdx <- 12
 ```
