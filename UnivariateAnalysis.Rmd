@@ -10,15 +10,18 @@ library(ggplot2)
 library(doParallel)
 library(scales)
 
-registerDoParallel(cores=6)
+registerDoParallel()
 ```
 
 Load the dataset
 ```{r}
 lcMSDataset <- readr::read_csv('./Data/Dementia_RPOS_XCMS_Dataset.csv')
 
-firstMetaboliteColIdx <- 12
+firstMetaboliteColIdx <- 6
 ```
+
+The age-adjusted log fold change (Male vs Female) is extracted directly from the `GenderMale` coefficient of the linear model fitted below. This ensures the fold change is consistent with the p-values, both of which account for Age as a covariate.
+
 # Linear model analysis
 ```{r}
 #define a function to apply to each metabolite and extract effect size estimates and p-values
@@ -33,7 +36,9 @@ fitLMModel <- function(dataset, var) {
                                 Gender=lmModelSummary$coefficients['GenderMale', 't value'],
                                 r2_pval=r2AOVpval, 
                                 age_pval=lmModelSummary$coefficients['Age', 'Pr(>|t|)'],
-                                Gender_pval=lmModelSummary$coefficients['GenderMale', 'Pr(>|t|)']) 
+                                Gender_pval=lmModelSummary$coefficients['GenderMale', 'Pr(>|t|)'],
+                                Gender_estimate=lmModelSummary$coefficients['GenderMale', 'Estimate'],
+                                Age_estimate=lmModelSummary$coefficients['Age', 'Estimate'])
   
 return(linearModelResults)
   
@@ -46,8 +51,8 @@ linearModelAnalysis <- foreach(var=firstMetaboliteColIdx:ncol(lcMSDataset), .com
         return(fitLMModel(lcMSDataset, var))
     }, error = function(err) {
        # In case of crash fill a row of NA's
-       currmet_parsed <- substring(colnames(lcMSDataset)[var], first=2)
-       return(c(currmet_parsed, rep(NA,6)))
+       currmet_parsed <- colnames(lcMSDataset)[var]
+       return(c(currmet_parsed, rep(NA,8)))
     })
 }
 
@@ -77,6 +82,36 @@ BHGender <- p.adjust(linearModelAnalysis$Gender_pval, method='BH')
 BYGender <- p.adjust(linearModelAnalysis$Gender_pval, method='BY')
 ```
 
+# Volcano Plot - Gender
+```{r}
+volcanoFrame <- data.frame(logFC=linearModelAnalysis$Gender_estimate, feature=colnames(lcMSDataset)[firstMetaboliteColIdx:ncol(lcMSDataset)], pvalue=linearModelAnalysis$Gender_pval, qvalue = BYGender)
+volcanoFrame$Significant <- 'No'
+volcanoFrame$Significant[(volcanoFrame$qvalue < 0.05) & (volcanoFrame$logFC > 0)]  <- 'Higher in Male'
+volcanoFrame$Significant[(volcanoFrame$qvalue < 0.05) & (volcanoFrame$logFC < 0)] <- 'Higher in Female'
+
+VolcanoPlot <- ggplot(volcanoFrame, aes(x=logFC, y=-log10(pvalue))) + geom_point(aes(col=Significant)) + theme_minimal() +
+  scale_colour_manual(values = c("No"="gray", "Higher in Male" = "firebrick1", "Higher in Female" = "steelblue3")) + xlab('logFC (age-adjusted)') + ylab('-log10(Pvalue)')
+
+VolcanoPlot
+```
+
+# Volcano Plot - Age
+
+For a continuous predictor, the x-axis shows the regression coefficient: the estimated change in `log(feature + 1)` per additional year of age, adjusted for Gender.
+
+```{r}
+volcanoFrameAge <- data.frame(Age_coef=linearModelAnalysis$Age_estimate, feature=colnames(lcMSDataset)[firstMetaboliteColIdx:ncol(lcMSDataset)], pvalue=linearModelAnalysis$age_pval,
+                              qvalue=BYAge)
+volcanoFrameAge$Significant <- 'No'
+volcanoFrameAge$Significant[(volcanoFrameAge$qvalue < 0.05) & (volcanoFrameAge$Age_coef > 0)] <- 'Increases with Age'
+volcanoFrameAge$Significant[(volcanoFrameAge$qvalue < 0.05) & (volcanoFrameAge$Age_coef < 0)] <- 'Decreases with Age'
+
+VolcanoPlotAge <- ggplot(volcanoFrameAge, aes(x=Age_coef, y=-log10(pvalue))) + geom_point(aes(col=Significant)) + theme_minimal() +
+  scale_colour_manual(values = c('No'='gray', 'Increases with Age' = 'firebrick1', 'Decreases with Age' = 'steelblue3')) + xlab('Age coefficient (log(x+1) per year)') + ylab('-log10(Pvalue)')
+
+VolcanoPlotAge
+```
+
 # Plot some of the significant features
 ```{r}
 # Significant feature for Gender
@@ -86,4 +121,10 @@ ggplot(lcMSDataset, aes(x=Gender, y=get(feature))) + geom_boxplot(aes(fill=Gende
 # Significant feature for Age
 feature <- linearModelAnalysis[which.min(BHAge), 'Feature']
 ggplot(lcMSDataset, aes(x=Age, y=get(feature))) + geom_point(col='steelblue2') + xlab('Age') + ylab(paste0('log(', feature, ' + 1)')) +  theme_light() + scale_y_continuous(trans = log1p_trans(), breaks = trans_breaks("log", function(x) exp(x)), labels = trans_format("log", math_format(e^.x)))
+```
+
+# Save the results
+```{r}
+resultsDataFrame <- cbind(linearModelAnalysis, "FDR_BH_q-value_Gender" = BHGender, "FDR_BH_q-value_Age" = BHAge)
+write.csv(resultsDataFrame, 'LinearRegressionAnalysis_RPOS.csv')
 ```
