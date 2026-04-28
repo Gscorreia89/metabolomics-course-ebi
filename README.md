@@ -4,7 +4,7 @@ Metabolomics data analysis tutorials for the EMBL-EBI "Introduction to metabolom
 
 Run the tutorials via Google Colab:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA_Microbial.ipynb) [PCA Analysis - Microbial Dataset](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA_Microbial.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA_microbial.ipynb) [PCA Analysis - Microbial Dataset](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA_microbial.ipynb)
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA.ipynb) [PCA Analysis](https://colab.research.google.com/github/Gscorreia89/metabolomics-course-ebi/blob/master/PCA.ipynb)
 
